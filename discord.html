@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>snipex.lol · discord</title>
     <link rel="icon" type="image/png" href="/favicon.png">
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onTurnstileLoad" async defer></script>
     <style>
         * {
             margin: 0;
@@ -27,10 +28,11 @@
             padding: 2rem;
             max-width: 400px;
             width: 90%;
-            background: rgba(10, 10, 15, 0.4);
+            background: rgba(10, 10, 15, 0.6);
             backdrop-filter: blur(10px);
             border-radius: 2rem;
-            border: 1px solid rgba(139, 139, 255, 0.2);
+            border: 1px solid rgba(139, 139, 255, 0.3);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
         }
 
         .discord-icon {
@@ -49,43 +51,21 @@
             -webkit-background-clip: text;
             background-clip: text;
             color: transparent;
+            margin-bottom: 0.5rem;
+        }
+
+        .discord-link {
+            font-size: 0.9rem;
+            color: #5865f2;
             margin-bottom: 2rem;
+            font-family: monospace;
         }
 
         .captcha-container {
             display: flex;
             justify-content: center;
             margin: 1.5rem 0;
-            min-height: 80px;
-        }
-
-        .fake-captcha {
-            background: rgba(30, 30, 40, 0.8);
-            border: 1px solid rgba(139, 139, 255, 0.4);
-            border-radius: 12px;
-            padding: 12px 20px;
-            display: inline-flex;
-            align-items: center;
-            gap: 12px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .fake-captcha:hover {
-            background: rgba(50, 50, 70, 0.8);
-            border-color: #8b8bff;
-        }
-
-        .fake-captcha input {
-            width: 18px;
-            height: 18px;
-            cursor: pointer;
-            accent-color: #5865f2;
-        }
-
-        .fake-captcha span {
-            font-size: 0.9rem;
-            color: #ccc;
+            min-height: 85px;
         }
 
         .status {
@@ -143,71 +123,51 @@
         </div>
         <div class="site-name">snipex.lol</div>
 
-        <div class="captcha-container" id="captchaContainer">
-            <div id="turnstileWidget"></div>
+        <div class="captcha-container">
+            <div id="captcha-box"></div>
         </div>
 
-        <div id="statusMsg" class="status">Complete captcha to continue...</div>
+        <div id="statusMsg" class="status">✓ Complete the captcha to join Discord</div>
     </div>
 
     <script>
         let redirecting = false;
         const statusMsg = document.getElementById('statusMsg');
-        const isLocalhost = window.location.hostname === 'localhost' || 
-                           window.location.hostname === '127.0.0.1' ||
-                           window.location.protocol === 'file:';
 
         function redirect() {
             if (redirecting) return;
             redirecting = true;
             
-            statusMsg.innerHTML = '<span class="spinner"></span> Verified — redirecting to discord...';
+            statusMsg.innerHTML = '<span class="spinner"></span> Verified! Redirecting to Discord...';
             statusMsg.className = 'status redirecting';
             
             setTimeout(function() {
                 window.location.href = 'https://discord.gg/snipex';
-            }, 600);
+            }, 800);
         }
 
-        if (isLocalhost) {
-            const container = document.getElementById('captchaContainer');
-            container.innerHTML = `
-                <div class="fake-captcha" id="fakeCaptcha">
-                    <input type="checkbox" id="captchaCheckbox">
-                    <span>✓ I'm not a robot (dev mode)</span>
-                </div>
-            `;
-            
-            const checkbox = document.getElementById('captchaCheckbox');
-            checkbox.addEventListener('change', function(e) {
-                if (checkbox.checked) {
+        function onTurnstileLoad() {
+            turnstile.render('#captcha-box', {
+                sitekey: '0x4AAAAAAAQVgS_r_3u_iX2R',
+                callback: function(token) {
                     redirect();
-                } else {
-                    statusMsg.textContent = 'Complete the captcha to continue';
-                    statusMsg.className = 'status';
+                },
+                'expired-callback': function() {
+                    statusMsg.innerHTML = '⌛ Captcha expired — please try again';
+                    statusMsg.className = 'status error';
                     redirecting = false;
-                }
+                },
+                'error-callback': function() {
+                    statusMsg.innerHTML = '⚠️ Error loading captcha — refresh page';
+                    statusMsg.className = 'status error';
+                },
+                theme: 'dark',
+                size: 'normal'
             });
-        } else {
-            const script = document.createElement('script');
-            script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js';
-            script.async = true;
-            script.defer = true;
-            script.onload = function() {
-                turnstile.render('#turnstileWidget', {
-                    sitekey: '0x4AAAAAAAQVgS_r_3u_iX2R',
-                    callback: function(token) {
-                        redirect();
-                    },
-                    'expired-callback': function() {
-                        statusMsg.textContent = 'Captcha expired — please try again';
-                        statusMsg.className = 'status error';
-                        redirecting = false;
-                    },
-                    theme: 'dark'
-                });
-            };
-            document.head.appendChild(script);
+        }
+
+        if (window.turnstile) {
+            onTurnstileLoad();
         }
 
         document.addEventListener('contextmenu', function(e) {
